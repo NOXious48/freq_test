@@ -28,8 +28,8 @@ def batch_run(image_dir: str, output_dir: str = "reports"):
 
     all_results = []
     fields = [
-        "filename", "fft_anomaly_score", "high_freq_energy", "mid_freq_ratio",
-        "dct_score", "phase_anomaly_score", "dwt_score", "anomaly_score",
+        "filename", "fft_mid_anomaly_db", "fft_high_anomaly_db",
+        "gan_probability", "anomaly_score",
         "valid", "error"
     ]
 

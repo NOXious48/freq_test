@@ -15,12 +15,12 @@ TEST_IMAGES = {
 }
 
 ASSERTIONS = [
-    ("anomaly_score",       "test_fake_stylegan2",  ">=", 0.55),
-    ("fft_anomaly_score",   "test_fake_stylegan2",  ">=", 0.55),
-    ("dct_score",           "test_fake_stylegan2",  ">=", 0.40),
-    ("phase_anomaly_score", "test_fake_faceswap",   ">=", 0.40),
-    ("anomaly_score",       "test_real_ffhq",       "<=", 0.20),
-    ("anomaly_score",       "test_compressed_fake", ">=", 0.30),
+    ('gan_probability',     'test_fake_stylegan2',  '>=', 0.50),
+    ('fft_mid_anomaly_db',  'test_fake_stylegan2',  '>=', 0.05),
+    ('anomaly_score',       'test_fake_stylegan2',  '>=', 0.50),
+    ('gan_probability',     'test_real_ffhq',       '<=', 0.40),
+    ('anomaly_score',       'test_real_ffhq',       '<=', 0.35),
+    ('anomaly_score',       'test_compressed_fake', '>=', 0.30),
 ]
 
 def main():

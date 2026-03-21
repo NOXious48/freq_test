@@ -1,7 +1,10 @@
 # ============================================================
 # MFAD_dev — Deep Sentinel .gitignore
 # ============================================================
-
+GET_TEST_IMAGES_ANTIGRAVITY.md
+download_test_images.py
+FREQUENCY_AGENT_UPGRADE_ANTIGRAVITY.md
+PROGRESS_HANDOFF.md
 # ── Python ───────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
@@ -58,6 +61,7 @@ test_images/
 # ── Submodules (cloned repos — not your code) ────────────────
 # These are tracked as git submodules or excluded entirely.
 # If using git submodule add, remove these lines.
+submodules/
 submodules/GANDCTAnalysis/
 submodules/frequency-forensics/
 submodules/FreqNet-DeepfakeDetection/
