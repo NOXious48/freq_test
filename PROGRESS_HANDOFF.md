@@ -160,17 +160,17 @@ ASSERTIONS = [
 | test_real_ffhq | 0.000 | 0.000 | 0.997 | 0.249 | REAL |
 | test_compressed_fake | 0.000 | 3.258 | 0.994 | 0.642 | FAKE |
 
-### Batch Results (1006 images)
+### Batch Results (1006 images) - v2 Pure Math
 ```
 Total images : 1006
 Processed OK : 1006
 Errors       : 0
-Time         : 92.8s (0.09s/image)
-Anomaly mean : 0.4258
-Anomaly std  : 0.1232
-Anomaly min  : 0.1376
-Anomaly max  : 0.6000
-Flagged FAKE : 326/1006 (32.4%)
+Time         : 40.3s (0.04s/image)
+Anomaly mean : 0.5013
+Anomaly std  : 0.2094
+Anomaly min  : 0.0000
+Anomaly max  : 1.0000
+Flagged FAKE : 487/1006 (48.4%)
 ```
 
 ---

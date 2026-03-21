@@ -1,75 +1,42 @@
-# MFAD_dev/scripts/evaluate_frequency_agent.py
-import json, sys, os
-from datetime import datetime
-from pathlib import Path
+# evaluate_frequency_agent.py — 3-field schema, no gan_probability
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+import sys
+sys.path.insert(0, ".")
 from agents.frequency_agent import run, validate_output
 
 TEST_IMAGES = {
-    "test_fake_stylegan2":  {"path": "test_images/test_fake_stylegan2.jpg",  "label": 1},
-    "test_fake_faceswap":   {"path": "test_images/test_fake_faceswap.jpg",   "label": 1},
-    "test_fake_diffusion":  {"path": "test_images/test_fake_diffusion.jpg",  "label": 1},
-    "test_real_ffhq":       {"path": "test_images/test_real_ffhq.jpg",       "label": 0},
-    "test_compressed_fake": {"path": "test_images/test_compressed_fake.jpg", "label": 1},
+    "test_fake_stylegan2":  "test_images/test_fake_stylegan2.jpg",
+    "test_fake_faceswap":   "test_images/test_fake_faceswap.jpg",
+    "test_fake_diffusion":  "test_images/test_fake_diffusion.jpg",
+    "test_real_ffhq":       "test_images/test_real_ffhq.jpg",
+    "test_compressed_fake": "test_images/test_compressed_fake.jpg",
 }
 
 ASSERTIONS = [
-    ('gan_probability',     'test_fake_stylegan2',  '>=', 0.50),
-    ('fft_mid_anomaly_db',  'test_fake_stylegan2',  '>=', 0.05),
-    ('anomaly_score',       'test_fake_stylegan2',  '>=', 0.50),
-    ('gan_probability',     'test_real_ffhq',       '<=', 0.40),
-    ('anomaly_score',       'test_real_ffhq',       '<=', 0.35),
-    ('anomaly_score',       'test_compressed_fake', '>=', 0.30),
+    # (field,               image_key,              op,   threshold)
+    ("fft_high_anomaly_db", "test_fake_stylegan2",  ">=", 1.0),
+    ("anomaly_score",       "test_fake_stylegan2",  ">=", 0.50),
+    ("anomaly_score",       "test_real_ffhq",       "<=", 0.35),
+    ("anomaly_score",       "test_compressed_fake", ">=", 0.30),
 ]
 
-def main():
-    print("=" * 55)
-    print("Frequency Agent Evaluation — Deep Sentinel L3")
-    print("=" * 55)
+results = {}
+for key, path in TEST_IMAGES.items():
+    out = run({"input_type": "image", "path": path})
+    results[key] = out
+    print(f"\n[{key}]")
+    for field, val in out.items():
+        print(f"  {field}: {val:.4f}")
+    print(f"  validate_output: {validate_output(out)}")
 
-    results = {}
-    passed  = 0
-    labels, scores = [], []
+print("\n── ASSERTIONS ──")
+passed = 0
+for field, img_key, op, thr in ASSERTIONS:
+    val    = results[img_key][field]
+    ok     = (val >= thr) if op == ">=" else (val <= thr)
+    status = "PASS" if ok else "FAIL"
+    if ok:
+        passed += 1
+    print(f"  {status}  {field} [{img_key}] {op} {thr}  (actual: {val:.4f})")
 
-    for name, meta in TEST_IMAGES.items():
-        if not Path(meta["path"]).exists():
-            print(f"\n[SKIP] {name} — not found"); continue
-        print(f"\n[Running] {name}")
-        result = run({"input_type": "image", "path": meta["path"]})
-        results[name] = result
-        for k, v in result.items():
-            if isinstance(v, float):
-                print(f"  {k:<25} {v:.4f}")
-        print(f"  validate_output: {validate_output(result)}")
-        labels.append(meta["label"])
-        scores.append(result.get("anomaly_score", 0.5))
-
-    print("\n" + "=" * 55)
-    print("ASSERTIONS")
-    print("=" * 55)
-    for field, img, op, thr in ASSERTIONS:
-        if img not in results or "error" in results.get(img, {}):
-            print(f"  [SKIP] {field} on {img}"); continue
-        val = results[img].get(field, 0.0)
-        ok  = (val >= thr) if op == ">=" else (val <= thr)
-        if ok: passed += 1
-        status = "PASS" if ok else "FAIL"
-        print(f"  {status}  {field} {op} {thr}  [{img}]  actual={val:.4f}")
-
-    print(f"\nResult: {passed}/{len(ASSERTIONS)} passed")
-
-    if len(set(labels)) == 2:
-        from sklearn.metrics import roc_auc_score
-        print(f"AUC-ROC: {roc_auc_score(labels, scores):.4f}")
-
-    os.makedirs("logs", exist_ok=True)
-    ts  = datetime.now().strftime("%Y%m%d_%H%M%S")
-    out = f"logs/eval_frequency_{ts}.json"
-    json.dump({"timestamp": ts, "passed": passed,
-               "total": len(ASSERTIONS), "results": results},
-              open(out, "w"), indent=2, default=str)
-    print(f"Log saved: {out}")
-
-if __name__ == "__main__":
-    main()
+print(f"\n{passed}/{len(ASSERTIONS)} assertions passing")

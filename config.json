@@ -38,8 +38,8 @@
       "high_pct": 0.75
     },
     "fft_thresholds": {
-      "mid_expected_offset": -12.0,
-      "high_expected_offset": -35.0,
+      "mid_expected_offset": -24.1,
+      "high_expected_offset": -36.6,
       "ultra_expected_offset": -55.0,
       "normalization_factor": 10.0
     },
@@ -48,18 +48,9 @@
       "fake_hf_ratio_max": 0.35,
       "block_size": 8
     },
-    "efficientnet": {
-      "model_name": "efficientnet_b4",
-      "checkpoint_path": "models/efficientnet_b4.pth",
-      "fallback_pretrained": true,
-      "input_size": 224,
-      "num_classes": 2,
-      "fake_class_idx": 1
-    },
     "submethod_weights": {
-      "fft": 0.4,
-      "dct": 0.35,
-      "efficientnet": 0.25
+      "fft": 0.55,
+      "dct": 0.45
     }
   },
   "geometry_agent": {

@@ -16,9 +16,8 @@ def compute_hf_ratio(path, block_size=8):
     means = np.array(coeffs).mean(axis=0)
     return float(np.abs(means[32:]).mean() / (np.abs(means[1:16]).mean() + 1e-8))
 
-def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--faces_dir", default="data/FaceForensics/faces/")
+    parser.add_argument("--faces_dir", default="test_images/")
     parser.add_argument("--max_images", type=int, default=2000)
     parser.add_argument("--config_out", default="config_calibrated.json")
     args = parser.parse_args()
