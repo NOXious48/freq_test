@@ -18,6 +18,8 @@ ASSERTIONS = [
     ("anomaly_score",       "test_fake_stylegan2",  ">=", 0.50),
     ("anomaly_score",       "test_real_ffhq",       "<=", 0.35),
     ("anomaly_score",       "test_compressed_fake", ">=", 0.30),
+    ("face_cropped",        "test_fake_stylegan2",  "==", True),
+    ("face_cropped",        "test_real_ffhq",       "==", True),
 ]
 
 results = {}

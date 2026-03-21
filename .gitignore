@@ -5,6 +5,8 @@ GET_TEST_IMAGES_ANTIGRAVITY.md
 download_test_images.py
 FREQUENCY_AGENT_UPGRADE_ANTIGRAVITY.md
 PROGRESS_HANDOFF.md
+FREQUENCY_AGENT_FACE_CROP_FIX.md
+FREQUENCY_AGENT_FACE_CROP_FIX.md
 # ── Python ───────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
