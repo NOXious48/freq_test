@@ -16,9 +16,6 @@
 import json
 import numpy as np
 import cv2
-import tempfile
-import os
-import mediapipe as mp
 from pathlib import Path
 from scipy.fftpack import dct as scipy_dct
 
@@ -41,17 +38,15 @@ STUB_OUTPUT = {
     "fft_mid_anomaly_db":  0.0,
     "fft_high_anomaly_db": 0.0,
     "anomaly_score":       0.0,
-    "face_cropped":        False
 }
 
 SCHEMA = STUB_OUTPUT.keys()
 
 
 def validate_output(output: dict) -> bool:
-    """Check all 4 schema fields are present.
+    """Check all 3 schema fields are present.
     fft fields: float, >= 0.
-    anomaly_score: float, in [0, 1].
-    face_cropped: bool."""
+    anomaly_score: float, in [0, 1]."""
     for k in ["fft_mid_anomaly_db", "fft_high_anomaly_db"]:
         if k not in output:
             return False
@@ -65,79 +60,10 @@ def validate_output(output: dict) -> bool:
         return False
     if not (0.0 <= output["anomaly_score"] <= 1.0):
         return False
-    if "face_cropped" not in output:
-        return False
-    if type(output["face_cropped"]) is not bool:
-        return False
     return True
 
 
 # ── Entrypoint ────────────────────────────────────────────────────────────────
-
-def _crop_face(image_path: str):
-    """
-    Detects face, crops with 20% padding, resizes to 224x224.
-    Returns (temp_file_path, face_cropped_boolean).
-    If no face found, returns (image_path, False).
-    """
-    img = cv2.imread(image_path)
-    if img is None:
-        return image_path, False
-
-    h, w = img.shape[:2]
-    face_rect = None
-
-    # Primary: MediaPipe
-    try:
-        import mediapipe as mp
-        mp_face_detection = mp.solutions.face_detection
-        with mp_face_detection.FaceDetection(model_selection=1, min_detection_confidence=0.5) as face_detection:
-            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            results = face_detection.process(img_rgb)
-            if results.detections:
-                bboxC = results.detections[0].location_data.relative_bounding_box
-                xmin = int(bboxC.xmin * w)
-                ymin = int(bboxC.ymin * h)
-                box_w = int(bboxC.width * w)
-                box_h = int(bboxC.height * h)
-                face_rect = (xmin, ymin, box_w, box_h)
-    except Exception as e:
-        pass
-
-    # Fallback: OpenCV
-    if face_rect is None:
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
-        if len(faces) > 0:
-            face_rect = faces[0]
-
-    if face_rect is None:
-        return image_path, False
-
-    x, y, fw, fh = face_rect
-
-    # 20% padding
-    pad_w = int(fw * 0.20)
-    pad_h = int(fh * 0.20)
-
-    x1 = max(0, x - pad_w)
-    y1 = max(0, y - pad_h)
-    x2 = min(w, x + fw + pad_w)
-    y2 = min(h, y + fh + pad_h)
-
-    crop = img[y1:y2, x1:x2]
-    if crop.size == 0:
-        return image_path, False
-
-    crop = cv2.resize(crop, (224, 224))
-
-    fd, tmp_path = tempfile.mkstemp(suffix=".jpg")
-    os.close(fd)
-    cv2.imwrite(tmp_path, crop)
-
-    return tmp_path, True
-
 
 def run(input: dict) -> dict:
     """
@@ -158,49 +84,40 @@ def run(input: dict) -> dict:
     Args:
         input: dict with keys: input_type (str), path (str — face_crop_path)
     Returns:
-        dict with fft_mid_anomaly_db, fft_high_anomaly_db, anomaly_score, face_cropped.
+        dict with fft_mid_anomaly_db, fft_high_anomaly_db, anomaly_score.
         No exceptions raised — handled upstream by safe_run().
     """
     if STUB_MODE:
         return STUB_OUTPUT.copy()
 
     image_path = input["path"]
-    tmp_crop_path = None
 
-    try:
-        crop_path, face_cropped = _crop_face(image_path)
-        tmp_crop_path = crop_path if face_cropped else None
+    fft_result = _run_fft_analysis(image_path)
+    dct_result = _run_dct_analysis(image_path)
 
-        fft_result = _run_fft_analysis(crop_path)
-        dct_result = _run_dct_analysis(crop_path)
+    # Normalise raw dB excess to [0, 1].
+    # High-band weighted 0.7 within FFT because it showed signal on StyleGAN2
+    # in v1 (3.34 dB) while mid-band returned 0.0.
+    # normalization_factor=10.0 (not 20.0) — at 20.0, fft_high=3.34 only
+    # contributes 0.064 to anomaly_score, forcing DCT to score >=0.97 alone.
+    # At 10.0, FFT contributes 0.129 and DCT needs >=0.825 — achievable.
+    norm_factor = _FTHR["normalization_factor"]
+    fft_normalised = float(np.clip(
+        (0.3 * fft_result["fft_mid_anomaly_db"] +
+         0.7 * fft_result["fft_high_anomaly_db"]) / norm_factor,
+        0.0, 1.0
+    ))
 
-        # Normalise raw dB excess to [0, 1].
-        # High-band weighted 0.7 within FFT because it showed signal on StyleGAN2
-        # in v1 (3.34 dB) while mid-band returned 0.0.
-        # normalization_factor=10.0 (not 20.0) — at 20.0, fft_high=3.34 only
-        # contributes 0.064 to anomaly_score, forcing DCT to score >=0.97 alone.
-        # At 10.0, FFT contributes 0.129 and DCT needs >=0.825 — achievable.
-        norm_factor = _FTHR["normalization_factor"]
-        fft_normalised = float(np.clip(
-            (0.3 * fft_result["fft_mid_anomaly_db"] +
-             0.7 * fft_result["fft_high_anomaly_db"]) / norm_factor,
-            0.0, 1.0
-        ))
+    anomaly_score = float(np.clip(
+        _W["fft"] * fft_normalised + _W["dct"] * dct_result["dct_score"],
+        0.0, 1.0
+    ))
 
-        anomaly_score = float(np.clip(
-            _W["fft"] * fft_normalised + _W["dct"] * dct_result["dct_score"],
-            0.0, 1.0
-        ))
-
-        output = {
-            "fft_mid_anomaly_db":  fft_result["fft_mid_anomaly_db"],
-            "fft_high_anomaly_db": fft_result["fft_high_anomaly_db"],
-            "anomaly_score":       anomaly_score,
-            "face_cropped":        face_cropped,
-        }
-    finally:
-        if tmp_crop_path and os.path.exists(tmp_crop_path):
-            os.unlink(tmp_crop_path)
+    output = {
+        "fft_mid_anomaly_db":  fft_result["fft_mid_anomaly_db"],
+        "fft_high_anomaly_db": fft_result["fft_high_anomaly_db"],
+        "anomaly_score":       anomaly_score,
+    }
 
     assert validate_output(output), f"Schema validation failed: {output}"
     return output

@@ -59,14 +59,13 @@ This document covers the **Frequency Sub-Agent (L3)** — the only agent impleme
 
 ### Phase 4: Face Crop Internalization (FREQUENCY_AGENT_FACE_CROP_FIX.md)
 
-**This is the most recent work.** The previous pure-math Frequency Agent tested poorly against a broad 10,905 image Kaggle dataset (Recall 0.14) because it processed the entire image background which diluted the frequency artifacts.
+**This was an experimental branch.** The previous pure-math Frequency Agent tested poorly against a broad Kaggle dataset (Recall 0.14) because it processed the entire image background which diluted the frequency artifacts.
  
-#### What was done:
-1. **Added Internal Crop**: Implemented `_crop_face()` inside `agents/frequency_agent.py`.
-2. **MediaPipe Primary**: Added `mediapipe` face detection inside a `try/except` block to detect faces and crop them with a 20% pad to exactly 224x224 before running the FFT/DCT signals.
-3. **OpenCV Fallback**: Defaults to `haarcascade_frontalface_default.xml` if `mediapipe` fails.
-4. **Output Schema**: Added a `"face_cropped": bool` flag to track whether the face was successfully extracted or if the full image was analyzed as a fallback.
-5. **Kaggle Evaluation**: Re-ran the 10,905 images with crop enabled. Extracted faces for 80.7% of them. While specificity jumped to 95.05%, fake recall dropped to 0.0595. Doing this explicitly verified that this specific Kaggle dataset's generative models do not exhibit textbook checkerboard high-frequency flaws, validating the need for the other deepfake pipeline agents.
+#### What was done and then REVERTED:
+1. **Added Internal Crop**: Implemented `_crop_face()` inside `agents/frequency_agent.py` using MediaPipe and OpenCV.
+2. **Kaggle Evaluation**: Extracted faces for 80.7% of the images. While specificity jumped to 95.05%, fake recall dropped to 0.0595.
+3. **CONCLUSION**: This explicitly verified that this specific Kaggle dataset's generative models do not exhibit textbook checkerboard high-frequency flaws. It validated the need for the other deepfake pipeline agents.
+4. **REVERT STATUS**: Because the face crop tripled the processing time without fixing the recall issue (it was an architectural data mismatch, not a background dilution issue), the face-crop code was mathematically unhelpful and has been **REVERTED**. The frequency agent operates on the full image path once again.
 
 ---
 

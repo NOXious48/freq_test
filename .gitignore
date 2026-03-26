@@ -6,7 +6,7 @@ download_test_images.py
 FREQUENCY_AGENT_UPGRADE_ANTIGRAVITY.md
 PROGRESS_HANDOFF.md
 FREQUENCY_AGENT_FACE_CROP_FIX.md
-FREQUENCY_AGENT_FACE_CROP_FIX.md
+HOW_TO_USE.md
 # ── Python ───────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
